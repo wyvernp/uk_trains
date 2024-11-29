@@ -19,12 +19,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             is_valid = await self._test_credentials(user_input)
             if is_valid:
-                await self.async_set_unique_id(
-                    f"{user_input['start_station']}_{user_input['end_station']}"
-                )
+                time = user_input.get("time", "anytime").replace(":", "")
+                unique_id = f"{user_input['start_station']}_{user_input['end_station']}_{time}"
+                await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=f"{user_input['start_station']} to {user_input['end_station']}",
+                    title=f"{user_input['start_station']} to {user_input['end_station']} at {user_input.get('time', 'anytime')}",
                     data=user_input,
                 )
             else:
@@ -53,21 +53,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         password = user_input["password"]
 
         # Use the RTT API to validate credentials and journey
-        import aiohttp
         from datetime import datetime
+        import base64
 
         session = aiohttp_client.async_get_clientsession(self.hass)
         try:
             url = f"https://api.rtt.io/api/v1/json/search/{start}/to/{end}"
             if time:
                 now = datetime.now()
-                date_str = now.strftime("%Y/%m/%d")  # Changed to match API requirements
+                date_str = now.strftime("%Y/%m/%d")  # Correct date format
                 time_str = time.replace(":", "")
                 url += f"/{date_str}/{time_str}"
 
             credentials = f"{username}:{password}"
-            import base64
-
             b64_credentials = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
             headers = {"Authorization": f"Basic {b64_credentials}"}
 
