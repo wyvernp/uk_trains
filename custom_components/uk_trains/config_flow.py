@@ -61,7 +61,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             url = f"https://api.rtt.io/api/v1/json/search/{start}/to/{end}"
             if time:
                 now = datetime.now()
-                date_str = now.strftime("%Y%m%d")  # Changed to match API requirements
+                date_str = now.strftime("%Y/%m/%d")  # Changed to match API requirements
                 time_str = time.replace(":", "")
                 url += f"/{date_str}/{time_str}"
 
