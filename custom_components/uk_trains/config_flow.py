@@ -1,4 +1,4 @@
-"""Config flow for UK Train Monitor integration."""
+"""Config flow for UK Trains integration."""
 import logging
 import voluptuous as vol
 from homeassistant import config_entries
@@ -8,8 +8,8 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-class TrainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for UK Train Monitor."""
+class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for UK Trains."""
 
     VERSION = 1
 
@@ -61,14 +61,14 @@ class TrainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             url = f"https://api.rtt.io/api/v1/json/search/{start}/to/{end}"
             if time:
                 now = datetime.now()
-                date_str = now.strftime("%Y/%m/%d")
+                date_str = now.strftime("%Y%m%d")  # Changed to match API requirements
                 time_str = time.replace(":", "")
                 url += f"/{date_str}/{time_str}"
 
             credentials = f"{username}:{password}"
             import base64
 
-            b64_credentials = base64.b64encode(credentials.encode("ascii")).decode("ascii")
+            b64_credentials = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
             headers = {"Authorization": f"Basic {b64_credentials}"}
 
             async with session.get(url, headers=headers) as response:
@@ -79,6 +79,8 @@ class TrainConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 elif response.status == 401:
                     _LOGGER.error("Invalid credentials provided.")
                     return False
+                else:
+                    _LOGGER.error(f"Unexpected response status: {response.status}")
             return False
         except Exception as e:
             _LOGGER.error(f"Error testing credentials: {e}")
