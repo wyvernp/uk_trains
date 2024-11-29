@@ -1,7 +1,8 @@
-"""Sensor platform for UK Train Monitor."""
+"""Sensor platform for UK Trains."""
 from datetime import datetime, timedelta
 import logging
-from homeassistant.helpers.entity import Entity
+import base64
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
@@ -15,15 +16,15 @@ _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=1)
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass, entry, async_add_entities):
     """Set up sensor platform."""
-    coordinator = TrainDataUpdateCoordinator(hass, config_entry.data)
+    coordinator = TrainDataUpdateCoordinator(hass, entry.data)
     await coordinator.async_config_entry_first_refresh()
 
     async_add_entities(
         [
-            TrainStatusSensor(coordinator, config_entry.data),
-            TrainDelaySensor(coordinator, config_entry.data),
+            TrainStatusSensor(coordinator, entry.data),
+            TrainDelaySensor(coordinator, entry.data),
         ]
     )
 
@@ -54,14 +55,12 @@ class TrainDataUpdateCoordinator(DataUpdateCoordinator):
             url = f"https://api.rtt.io/api/v1/json/search/{start_station}/to/{end_station}"
             if time:
                 now = datetime.now()
-                date_str = now.strftime("%Y/%m/%d")
+                date_str = now.strftime("%Y/%m/%d")  # Correct date format
                 time_str = time.replace(":", "")
                 url += f"/{date_str}/{time_str}"
 
             credentials = f"{username}:{password}"
-            import base64
-
-            b64_credentials = base64.b64encode(credentials.encode("ascii")).decode("ascii")
+            b64_credentials = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
             headers = {"Authorization": f"Basic {b64_credentials}"}
 
             async with session.get(url, headers=headers) as response:
@@ -72,9 +71,10 @@ class TrainDataUpdateCoordinator(DataUpdateCoordinator):
                 data = await response.json()
                 return data
         except Exception as e:
-            raise UpdateFailed(f"Error fetching data: {e}")
+            _LOGGER.error(f"Exception during data fetch: {e}")
+            raise UpdateFailed(f"Error fetching data: {e}") from e
 
-class TrainStatusSensor(CoordinatorEntity, Entity):
+class TrainStatusSensor(CoordinatorEntity, SensorEntity):
     """Sensor to show the train status."""
 
     def __init__(self, coordinator, config):
@@ -89,7 +89,7 @@ class TrainStatusSensor(CoordinatorEntity, Entity):
         )
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         services = self.coordinator.data.get("services", [])
         if services:
@@ -106,7 +106,7 @@ class TrainStatusSensor(CoordinatorEntity, Entity):
             ATTR_ATTRIBUTION: ATTRIBUTION,
         }
 
-class TrainDelaySensor(CoordinatorEntity, Entity):
+class TrainDelaySensor(CoordinatorEntity, SensorEntity):
     """Sensor to show the train delay time."""
 
     def __init__(self, coordinator, config):
@@ -119,9 +119,11 @@ class TrainDelaySensor(CoordinatorEntity, Entity):
         self._attr_unique_id = (
             f"train_delay_{config['start_station']}_{config['end_station']}"
         )
+        self._attr_device_class = "duration"
+        self._attr_native_unit_of_measurement = "minutes"
 
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         services = self.coordinator.data.get("services", [])
         if services:
@@ -132,17 +134,19 @@ class TrainDelaySensor(CoordinatorEntity, Entity):
 
             if scheduled_dep and realtime_dep:
                 fmt = "%H%M"
+                if realtime_dep in ["Delayed", "Cancelled", "On time"]:
+                    # Handle special cases
+                    return None  # Or another appropriate value
                 try:
-                    if realtime_dep in ["Delayed", "Cancelled", "On time"]:
-                        return 0  # Handle special cases
                     scheduled = datetime.strptime(scheduled_dep, fmt)
                     actual = datetime.strptime(realtime_dep, fmt)
                     delay = (actual - scheduled).total_seconds() / 60
                     return int(delay)
                 except ValueError:
-                    return 0  # Handle non-time strings
+                    _LOGGER.debug("Unable to parse time strings.")
+                    return None
             else:
-                return 0
+                return None
         return None
 
     @property
