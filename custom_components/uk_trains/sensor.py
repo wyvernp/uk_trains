@@ -81,11 +81,13 @@ class TrainStatusSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.config = config
+        time = config.get("time", "anytime").replace(":", "")
+        time_display = config.get("time", "anytime")
         self._attr_name = (
-            f"Train Status {config['start_station']} to {config['end_station']}"
+            f"Train Status {config['start_station']} to {config['end_station']} at {time_display}"
         )
         self._attr_unique_id = (
-            f"train_status_{config['start_station']}_{config['end_station']}"
+            f"train_status_{config['start_station']}_{config['end_station']}_{time}"
         )
 
     @property
@@ -103,7 +105,7 @@ class TrainStatusSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
+            ATTRIBUTION: ATTRIBUTION,
         }
 
 class TrainDelaySensor(CoordinatorEntity, SensorEntity):
@@ -113,11 +115,13 @@ class TrainDelaySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.config = config
+        time = config.get("time", "anytime").replace(":", "")
+        time_display = config.get("time", "anytime")
         self._attr_name = (
-            f"Train Delay {config['start_station']} to {config['end_station']}"
+            f"Train Delay {config['start_station']} to {config['end_station']} at {time_display}"
         )
         self._attr_unique_id = (
-            f"train_delay_{config['start_station']}_{config['end_station']}"
+            f"train_delay_{config['start_station']}_{config['end_station']}_{time}"
         )
         self._attr_device_class = "duration"
         self._attr_native_unit_of_measurement = "minutes"
@@ -134,9 +138,11 @@ class TrainDelaySensor(CoordinatorEntity, SensorEntity):
 
             if scheduled_dep and realtime_dep:
                 fmt = "%H%M"
-                if realtime_dep in ["Delayed", "Cancelled", "On time"]:
+                if realtime_dep in ["Delayed", "Cancelled"]:
                     # Handle special cases
                     return None  # Or another appropriate value
+                elif realtime_dep == "On time":
+                    return 0
                 try:
                     scheduled = datetime.strptime(scheduled_dep, fmt)
                     actual = datetime.strptime(realtime_dep, fmt)
@@ -153,5 +159,5 @@ class TrainDelaySensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         """Return the state attributes."""
         return {
-            ATTR_ATTRIBUTION: ATTRIBUTION,
+            ATTRIBUTION: ATTRIBUTION,
         }
