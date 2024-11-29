@@ -4,7 +4,7 @@
   "version": "1.0.4",
   "documentation": "https://github.com/wyvernp/uk_trains",
   "requirements": ["aiohttp>=3.7.4"],
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@wyvernp"],
   "config_flow": true,
   "iot_class": "cloud_polling"
 }
