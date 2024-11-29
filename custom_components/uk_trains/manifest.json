@@ -1,7 +1,7 @@
 {
   "domain": "uk_trains",
   "name": "UK Train Monitor",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "documentation": "https://github.com/wyvernp/uk_trains",
   "requirements": ["aiohttp>=3.7.4"],
   "codeowners": ["@yourusername"],
